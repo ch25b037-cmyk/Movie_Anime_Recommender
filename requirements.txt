@@ -1,0 +1,5 @@
+faiss-cpu
+streamlit
+scikit-learn
+pandas
+numpy
