@@ -536,6 +536,34 @@ modules = load_recommender_modules()
 # CACHED GENRE SHELVES EXTRACTOR (Onboarding Shelves)
 # =========================================================
 
+
+def _parse_genre_list(raw):
+    """
+    Parses a genre cell that may be:
+      - a real Python list (already parsed by pandas/pickle)
+      - a JSON-style stringified list, e.g. '["Action", "Award Winning", "Sci-Fi"]'
+      - a Python-repr stringified list, e.g. "['Action', 'Sci-Fi']"
+      - a plain delimited string, e.g. "Action|Comedy" or "Action, Comedy"
+    and always returns a clean list[str].
+    """
+    if isinstance(raw, list):
+        return [str(g).strip() for g in raw if str(g).strip()]
+    if not isinstance(raw, str) or not raw.strip():
+        return []
+    raw = raw.strip()
+    if raw.startswith("[") and raw.endswith("]"):
+        import json, ast
+        for parser in (json.loads, ast.literal_eval):
+            try:
+                parsed = parser(raw)
+                if isinstance(parsed, list):
+                    return [str(g).strip() for g in parsed if str(g).strip()]
+            except (ValueError, SyntaxError, TypeError):
+                continue
+    # Fallback: plain delimited string
+    return [g.strip() for g in raw.replace("|", ",").split(",") if g.strip()]
+
+
 @st.cache_data
 def get_top_by_genre(mode, n=10):
     """
@@ -546,18 +574,18 @@ def get_top_by_genre(mode, n=10):
         df = modules["master_anime"].copy()
         # Compute popular anime based on score and member size
         df["pop_score"] = df["score"] * np.log1p(df["members"])
-        # MAL genres are typically comma-separated: "Action, Comedy"
-        df["genre_list"] = df["genres"].fillna("").apply(
-            lambda x: [g.strip() for g in x.replace("|", ",").split(",")] if x else []
-        )
-        major_genres = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Sci-Fi", "Romance"]
+        df["genre_list"] = df["genres"].apply(_parse_genre_list)
+        # MAL "genres" taxonomy (as opposed to themes/demographics like
+        # Isekai, Shounen, Mecha, which live in separate fields and won't
+        # match here even if present in the source data)
+        major_genres = [
+            "Action", "Adventure", "Award Winning", "Comedy", "Drama",
+            "Fantasy", "Romance", "Sci-Fi", "Slice of Life", "Supernatural",
+        ]
     else:
         df = modules["master_movie"].copy()
         df["pop_score"] = df["popularity"]
-        # MovieLens genres are typically bar-separated: "Action|Adventure|Sci-Fi"
-        df["genre_list"] = df["genres"].fillna("").apply(
-            lambda x: [g.strip() for g in x.split("|")] if x else []
-        )
+        df["genre_list"] = df["genres"].apply(_parse_genre_list)
         major_genres = ["Action", "Adventure", "Comedy", "Drama", "Sci-Fi", "Thriller", "Romance"]
 
     genre_map = {}
