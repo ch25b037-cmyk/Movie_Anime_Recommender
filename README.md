@@ -4,7 +4,7 @@ A content-based hybrid recommendation system for Movies and Anime that provides 
 
 Unlike traditional collaborative filtering systems, this recommender is designed to work even for completely new users (cold-start) by requiring only a handful of favourite titles.
 
-Deployed Website Link: https://movieanimerecommender-h5kmj8a28ycwvks6axpynr.streamlit.app/
+Deployed Website Link: https://movieanimerecommender-stoobid-shaastrians.streamlit.app/
 
 ---
 
